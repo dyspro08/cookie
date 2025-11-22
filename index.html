@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>쿠키 강화하기 (UI 수정)</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="sidebar-overlay"></div>
+
+    <div id="game-container">
+        
+        <div id="left-panel">
+            <h2>🍪 장착중인 쿠키</h2>
+            <ol id="equipped-cookie-list">
+                <li>(비어있음)</li><li>(비어있음)</li><li>(비어있음)</li><li>(비어있음)</li><li>(비어있음)</li>
+            </ol>
+            
+            <h2>⚔️ 장착 무기</h2>
+            <div id="equipped-weapon-display">
+                (없음)
+            </div>
+
+            <div id="player-stats">
+                <p>CPS: <span id="sugar-per-time">0.000</span></p>
+                <p>설탕: <span id="sugar-count">1000</span></p>
+                <p>방지권: <span id="protection-ticket-count">0</span></p>
+            </div>
+        </div>
+        
+        <div id="center-panel">
+            <div id="cookie-mode-buttons">
+                <button id="strengthen-mode-button" class="mode-button active">일반강화</button>
+                <button id="star-strengthen-button" class="mode-button">스타강화</button>
+                <button id="gacha-mode-button" class="mode-button">뽑기</button>
+            </div>
+
+            <div id="strengthen-panel">
+                <div id="cookie-main-display">
+                    <div id="cookie-visual">
+                        <img src="https://placehold.co/300x300/D2B48C/8B4513?text=COOKIE" alt="쿠키 이미지">
+                    </div>
+                    <h2 id="cookie-name-display">기본 쿠키</h2>
+                </div>
+                <div id="strengthen-info">
+                    <p>강화 비용: <span id="cost-display">10</span>개</p>
+                    <p>성공 확률: <span id="probability-display">100</span>%</p>
+                    <p>보호 사용: <span id="protection-use-count">0</span>/5</p>
+                </div>
+                <div id="action-buttons">
+                    <input type="checkbox" id="protection-toggle-checkbox" class="hidden-checkbox">
+                    <label for="protection-toggle-checkbox" id="protection-toggle-label" class="action-button-small hidden">방지권 (0)</label>
+                    <button id="strengthen-button" class="action-button-large">강화하기!</button>
+                    <button id="store-button" class="action-button-small hidden">저장</button>
+                </div>
+            </div>
+
+            <div id="gacha-panel" class="hidden">
+                <h2>⚔️ 전투 쿠키 뽑기</h2>
+                <p>쿠키를 뽑아 전투에 활용하세요! (뽑기 비용: <span id="gacha-cost">1,000</span> 설탕)</p>
+                <div id="gacha-buttons">
+                    <button id="gacha-pull-1" class="gacha-button">1회 뽑기</button>
+                    <button id="gacha-pull-10" class="gacha-button">10회 뽑기</button>
+                </div>
+                <div id="gacha-result">
+                    <p>뽑기 결과를 기다리는 중...</p>
+                </div>
+            </div>
+        </div> 
+
+        <div id="right-panel">
+            <button id="inventory-toggle-button" class="menu-button">인벤</button>
+            <button id="shop-toggle-button" class="menu-button">상점</button>
+            <button id="ranking-toggle-button" class="menu-button">랭킹</button>
+            <button id="trade-toggle-button" class="menu-button">거래</button>
+            <button id="battle-button">전투</button>
+        </div>
+    </div>
+
+    <div id="main-sidebar">
+        <button id="close-sidebar-button">X</button>
+        <div id="sidebar-nav">
+            <button id="inventory-tab-button" class="tab-button">인벤토리</button>
+            <button id="shop-tab-button" class="tab-button">상점</button>
+            <button id="ranking-tab-button" class="tab-button">랭킹</button>
+            <button id="trade-tab-button" class="tab-button">거래</button>
+        </div>
+        <div id="sidebar-content-container">
+            <div id="inventory-tab-content" class="tab-content">
+                <h3>🍪 장착 중인 쿠키 (<span id="equipped-count">0</span>/5)</h3>
+                <div id="equipped-slots" class="item-list"></div>
+                <h3>📦 강화 쿠키 (보관함)</h3>
+                <div id="inventory-list" class="item-list"></div>
+                <h3>⚔️ 전투 쿠키 (보관함)</h3>
+                <div id="battle-cookie-list" class="item-list"></div>
+            </div>
+            <div id="shop-tab-content" class="tab-content hidden">
+                <h3>🛒 상점</h3>
+                <div class="item-list">
+                    <div class="shop-item">
+                        <span>🛡️ 실패 방지권 (1회)</span>
+                        <button id="buy-protection-ticket" class="purchase-button">구매 (설탕 100,000)</button>
+                    </div>
+                    <div class="shop-item">
+                        <span>🚀 +10 워프권</span>
+                        <button id="buy-warp-ticket" class="purchase-button">구매 (설탕 10,000)</button>
+                    </div>
+                </div>
+            </div>
+            <div id="ranking-tab-content" class="tab-content hidden">
+                <h3>🏆 랭킹 (개발 중)</h3>
+                <p>Firebase 연동 예정입니다.</p>
+            </div>
+            <div id="trade-tab-content" class="tab-content hidden">
+                <h3>🤝 거래 (개발 중)</h3>
+                <p>Firebase 연동 예정입니다.</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
