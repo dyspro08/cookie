@@ -3,9 +3,10 @@
 document.addEventListener("DOMContentLoaded", function() {
 
     // Firebase 인스턴스를 window 객체에서 가져옵니다 (HTML에서 초기화됨)
-    const auth = window.firebaseAuth;
-    const db = window.firebaseDb;
-    const GoogleAuthProvider = window.GoogleAuthProvider;
+    // Firebase가 로드되지 않았을 경우를 대비해 null 체크
+    const auth = window.firebaseAuth || null;
+    const db = window.firebaseDb || null;
+    const GoogleAuthProvider = window.GoogleAuthProvider || null;
 
     // 1. DOM 요소 가져오기
     const sugarCountEl = document.getElementById('sugar-count');
@@ -57,7 +58,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const battleExitButton = document.getElementById('battle-exit-button');
     const battleWeaponNameEl = document.getElementById('battle-weapon-name');
     
-    // [신규] 로그인 DOM
+    // 로그인 DOM
     const authSection = document.getElementById('auth-section');
     const userInfoEl = document.getElementById('user-info');
     const userNameEl = document.getElementById('user-name');
@@ -137,12 +138,10 @@ document.addEventListener("DOMContentLoaded", function() {
         { name: "대나무 쿠키", odds: 2500000, grade: "common" },
         { name: "흙 쿠키", odds: 10000000, grade: "common" },
     ];
-    
-    // [신규] Firebase 변수
     let currentUser = null;
 
 
-    // 5. 이벤트 리스너 (DOM 로드 후 실행되므로 안전)
+    // 5. 이벤트 리스너
     strengthenButton.addEventListener('click', strengthenCookie);
     storeButton.addEventListener('click', storeCookie);
     equippedSlotsEl.addEventListener('click', handleEquippedClick);
@@ -168,35 +167,43 @@ document.addEventListener("DOMContentLoaded", function() {
     gachaPull10.addEventListener('click', () => doGachaPull(10));
     battleExitButton.addEventListener('click', exitBattle);
     
-    // [신규] 로그인/로그아웃 리스너
-    googleLoginButton.addEventListener('click', signInWithGoogle);
-    logoutButton.addEventListener('click', signOut);
-
-
-    // 6. [신규] Firebase 인증 함수
-    auth.onAuthStateChanged(user => {
-        if (user) {
-            // 로그인 성공
-            currentUser = user;
-            userNameEl.textContent = user.displayName;
-            userInfoEl.style.display = 'block';
-            googleLoginButton.style.display = 'none';
-        } else {
-            // 로그아웃
-            currentUser = null;
-            userInfoEl.style.display = 'none';
-            googleLoginButton.style.display = 'block';
-        }
-    });
-
-    function signInWithGoogle() {
-        auth.signInWithPopup(GoogleAuthProvider).catch(error => {
-            console.error("Google 로그인 실패:", error);
+    // Firebase 관련 리스너 (null 체크 추가)
+    if (auth) {
+        googleLoginButton.addEventListener('click', signInWithGoogle);
+        logoutButton.addEventListener('click', signOut);
+        
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                currentUser = user;
+                userNameEl.textContent = user.displayName;
+                userInfoEl.style.display = 'block';
+                googleLoginButton.style.display = 'none';
+            } else {
+                currentUser = null;
+                userInfoEl.style.display = 'none';
+                googleLoginButton.style.display = 'block';
+            }
         });
+    } else {
+        console.error("Firebase Auth가 로드되지 않았습니다.");
+        googleLoginButton.textContent = "로그인 실패";
+        googleLoginButton.disabled = true;
+    }
+
+
+    // 6. Firebase 인증 함수
+    function signInWithGoogle() {
+        if (auth && GoogleAuthProvider) {
+            auth.signInWithPopup(GoogleAuthProvider).catch(error => {
+                console.error("Google 로그인 실패:", error);
+            });
+        }
     }
 
     function signOut() {
-        auth.signOut();
+        if (auth) {
+            auth.signOut();
+        }
     }
     
     // 7. 핵심 강화 함수
@@ -241,7 +248,6 @@ document.addEventListener("DOMContentLoaded", function() {
         updateDisplay();
     }
 
-    // [수정] storeCookie (랭킹 업데이트)
     async function storeCookie() {
         if (level === 0) return; 
 
@@ -252,7 +258,6 @@ document.addEventListener("DOMContentLoaded", function() {
         };
         inventory.push(newCookie);
         
-        // [신규] 로그인한 경우 랭킹 업데이트
         if (currentUser) {
             await updateUserRanking(currentUser, level);
         }
@@ -262,9 +267,8 @@ document.addEventListener("DOMContentLoaded", function() {
         updateDisplay();
     }
 
-    // [신규] 랭킹 업데이트 함수
     async function updateUserRanking(user, newLevel) {
-        if (!user) return;
+        if (!user || !db) return;
         
         const userRef = db.collection('rankings').doc(user.uid);
         try {
@@ -277,13 +281,11 @@ document.addEventListener("DOMContentLoaded", function() {
                     photoURL: user.photoURL,
                     highestLevel: newLevel
                 }, { merge: true });
-                // console.log("랭킹 업데이트 성공:", newLevel);
             }
         } catch (e) {
             console.error("랭킹 업데이트 실패:", e);
         }
     }
-
 
     function startBattle() {
         if (equippedBattleCookie) {
@@ -316,7 +318,6 @@ document.addEventListener("DOMContentLoaded", function() {
         sidebarOverlay.style.visibility = 'hidden';
     }
 
-    // [수정] 4탭 전환 함수 (랭킹 로드 추가)
     async function switchTab(tabName) {
         inventoryTabContent.style.display = 'none';
         shopTabContent.style.display = 'none';
@@ -337,15 +338,18 @@ document.addEventListener("DOMContentLoaded", function() {
         } else if (tabName === 'ranking') {
             rankingTabContent.style.display = 'block';
             rankingTabButton.classList.add('active');
-            await loadRanking(); // [신규] 랭킹 로드
+            await loadRanking(); 
         } else if (tabName === 'trade') {
             tradeTabContent.style.display = 'block';
             tradeTabButton.classList.add('active');
         }
     }
     
-    // [신규] 랭킹 로드 함수
     async function loadRanking() {
+        if (!db) {
+            rankingListEl.innerHTML = '<li>Firebase DB가 로드되지 않았습니다.</li>';
+            return;
+        }
         rankingListEl.innerHTML = '<li>로딩 중...</li>';
         try {
             const q = db.collection('rankings')
@@ -353,7 +357,7 @@ document.addEventListener("DOMContentLoaded", function() {
                         .limit(20);
             const querySnapshot = await q.get();
             
-            rankingListEl.innerHTML = ''; // 목록 비우기
+            rankingListEl.innerHTML = ''; 
             if (querySnapshot.empty) {
                 rankingListEl.innerHTML = '<li>아직 랭킹이 없습니다.</li>';
                 return;
@@ -372,7 +376,6 @@ document.addEventListener("DOMContentLoaded", function() {
             rankingListEl.innerHTML = '<li>랭킹을 불러오는 데 실패했습니다.</li>';
         }
     }
-
 
     function switchCentralPanel(mode) {
         strengthenPanel.style.display = 'none';
@@ -673,27 +676,3 @@ document.addEventListener("DOMContentLoaded", function() {
     battleUI.style.display = 'none';
     
 }); // [오류 수정] DOMContentLoaded 래퍼 종료
-```
-
----
-
-### **[중요] 다음 2가지를 꼭 확인하세요!**
-
-1.  **Firebase 콘솔 설정 (필수):**
-    * Firebase 프로젝트(`cookie-bg`)로 이동하세요.
-    * **Authentication (인증):** 'Sign-in method' 탭에서 **'Google'**을 **'사용 설정'** 하세요.
-    * **Firestore Database (Cloud Firestore):** 데이터베이스를 **'프로덕션 모드'**로 만드세요.
-    * **Firestore '규칙' (Rules) 탭:** 랭킹이 작동하려면 다음 규칙을 붙여넣고 **'게시'**하세요. (기본 규칙은 모든 읽기/쓰기를 차단합니다.)
-
-    ```
-    rules_version = '2';
-    service cloud.firestore {
-      match /databases/{database}/documents {
-        // 'rankings' 컬렉션은 누구나 읽을 수 있게 허용
-        match /rankings/{userId} {
-          allow read: if true;
-          // 쓰기(업데이트)는 본인만 가능하게 허용
-          allow write: if request.auth != null && request.auth.uid == userId;
-        }
-      }
-    }
