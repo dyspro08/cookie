@@ -4,8 +4,10 @@ html, body {
     overflow: hidden; font-family: 'Arial', sans-serif;
     background-color: #f0f0f0;
 }
-#game-container {
-    display: flex; justify-content: space-between;
+
+#main-game-ui {
+    display: flex; /* JS가 제어 */
+    justify-content: space-between;
     width: 100vw; height: 100vh;
 }
 
@@ -33,9 +35,9 @@ html, body {
     border-radius: 5px;
 }
 #player-stats {
-    margin-top: auto;
     border-top: 1px solid #eee;
     padding-top: 10px;
+    margin-top: 20px;
 }
 #player-stats p {
     font-size: 1.3em;
@@ -45,6 +47,34 @@ html, body {
 }
 #player-stats span { font-weight: normal; float: right; }
 
+/* [신규] 로그인 섹션 (하단 고정) */
+#auth-section {
+    margin-top: auto;
+    border-top: 1px solid #eee;
+    padding-top: 15px;
+}
+#google-login-button, #logout-button {
+    width: 100%;
+    padding: 12px;
+    font-size: 1.1em;
+    font-weight: bold;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+#google-login-button {
+    background-color: #4285F4; /* Google Blue */
+    color: white;
+}
+#logout-button {
+    background-color: #6c757d;
+    color: white;
+}
+#user-info p {
+    text-align: center;
+    font-weight: bold;
+    margin: 0 0 10px 0;
+}
 
 /* 2. 중앙 패널 */
 #center-panel {
@@ -90,19 +120,21 @@ html, body {
 .menu-button { padding: 15px; font-size: 1.2em; font-weight: bold; background-color: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
 #battle-button { padding: 30px; font-size: 1.5em; font-weight: bold; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: auto; }
 
-/* [오류 수정]
-  .hidden 규칙에 !important 를 추가하여
-  다른 모든 CSS 규칙보다 우선적으로 적용되도록 합니다.
-*/
-.hidden {
-    display: none !important;
-}
-
 /* 4. 사이드바 */
-#sidebar-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.5); z-index: 99; opacity: 0; visibility: hidden; transition: opacity 0.3s ease, visibility 0.3s ease; }
-#sidebar-overlay.is-open { opacity: 1; visibility: visible; }
-#main-sidebar { position: fixed; top: 0; right: 0; width: 400px; height: 100%; background-color: white; box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1); z-index: 100; transform: translateX(100%); transition: transform 0.3s ease-out; display: flex; flex-direction: column; }
-#main-sidebar.is-open { transform: translateX(0); }
+#sidebar-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); z-index: 99;
+    opacity: 0; visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+}
+#main-sidebar {
+    position: fixed; top: 0; right: 0; width: 400px; height: 100%;
+    background-color: white; box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
+    z-index: 100;
+    transform: translateX(100%);
+    transition: transform 0.3s ease-out;
+    display: flex; flex-direction: column;
+}
 #close-sidebar-button { position: absolute; top: 10px; right: 15px; background: none; border: none; font-size: 1.5em; padding: 5px; cursor: pointer; z-index: 101; }
 #sidebar-nav { display: flex; flex-shrink: 0; border-bottom: 1px solid #ddd; }
 .tab-button { flex: 1; padding: 15px; background-color: #f0f0f0; border: none; font-size: 1.1em; font-weight: bold; cursor: pointer; color: #888; }
@@ -121,3 +153,37 @@ html, body {
 .shop-item { display: flex; justify-content: space-between; align-items: center; background-color: #fff; padding: 12px; margin-bottom: 8px; border-radius: 5px; border: 1px solid #ddd; }
 .shop-item span { font-size: 1.1em; font-weight: bold; }
 .purchase-button { padding: 8px 15px; font-size: 1em; background-color: #007BFF; color: white; border: none; border-radius: 5px; cursor: pointer; }
+
+/* [신규] 랭킹 리스트 스타일 */
+#ranking-list {
+    padding-left: 20px;
+}
+#ranking-list li {
+    font-size: 1.1em;
+    margin-bottom: 10px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+#ranking-list span {
+    font-weight: bold;
+    color: #007BFF;
+    float: right;
+}
+
+
+/* 전투 UI */
+#battle-ui {
+    width: 100vw; height: 100vh;
+    background-color: #222; color: white;
+    display: none; /* JS가 제어 */
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+#battle-weapon-name { color: #ffc107; font-weight: bold; }
+#battle-exit-button {
+    padding: 15px 30px; font-size: 1.2em; margin-top: 30px;
+    background-color: #007BFF; color: white;
+    border: none; border-radius: 5px; cursor: pointer;
+}
