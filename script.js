@@ -1,9 +1,7 @@
-// [오류 수정]
-// DOM이 완전히 로드된 후에만 스크립트 전체를 실행하도록 수정
+// [오류 수정] DOM이 완전히 로드된 후에만 스크립트 전체를 실행하도록 수정
 document.addEventListener("DOMContentLoaded", function() {
 
     // Firebase 인스턴스를 window 객체에서 가져옵니다 (HTML에서 초기화됨)
-    // Firebase가 로드되지 않았을 경우를 대비해 null 체크
     const auth = window.firebaseAuth || null;
     const db = window.firebaseDb || null;
     const GoogleAuthProvider = window.GoogleAuthProvider || null;
@@ -57,8 +55,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const battleUI = document.getElementById('battle-ui');
     const battleExitButton = document.getElementById('battle-exit-button');
     const battleWeaponNameEl = document.getElementById('battle-weapon-name');
-    
-    // 로그인 DOM
     const authSection = document.getElementById('auth-section');
     const userInfoEl = document.getElementById('user-info');
     const userNameEl = document.getElementById('user-name');
@@ -66,8 +62,15 @@ document.addEventListener("DOMContentLoaded", function() {
     const logoutButton = document.getElementById('logout-button');
     const rankingListEl = document.getElementById('ranking-list');
 
+    // [신규] 확률표 모달 DOM
+    const gachaProbButton = document.getElementById('gacha-prob-button');
+    const gachaProbModal = document.getElementById('gacha-prob-modal');
+    const closeProbModal = document.getElementById('close-prob-modal');
+    const probModalOverlay = document.getElementById('prob-modal-overlay');
+    const probTableBody = document.getElementById('prob-table-body');
 
-    // 2. 100개 쿠키 이름 배열 (이전과 동일)
+    // (이하 2, 3, 4 변수 선언은 이전과 동일)
+    // 2. 100개 쿠키 이름 배열
     const cookieNames = [
         "바삭한 쿠키", "달콤한 쿠키", "고소한 쿠키", "촉촉한 쿠키", "향기로운 쿠키",
         "설탕 코팅 쿠키", "초코칩 쿠키", "더블 초코 쿠키", "딸기 향 쿠키", "바닐라 쿠키",
@@ -90,8 +93,7 @@ document.addEventListener("DOMContentLoaded", function() {
         "궁극 쿠키", "무적 쿠키", "초궁극 쿠키", "신격 쿠키", "초신격 쿠키",
         "절대신 쿠키", "무한신 쿠키", "초월신 쿠키", "창세신 쿠키", "태초의 쿠키"
     ];
-
-    // 3. 50배 쿠키 초당 설탕 획득량 배열 (이전과 동일)
+    // 3. 50배 쿠키 초당 설탕 획득량 배열
     const cookieSugarPerSecond = [
         5.00, 5.60, 6.25, 7.00, 7.85, 8.80, 9.85, 11.05, 12.35, 13.85,
         15.50, 17.35, 19.45, 21.80, 24.40, 27.30, 30.55, 34.20, 38.30, 42.90,
@@ -104,7 +106,6 @@ document.addEventListener("DOMContentLoaded", function() {
         42103.60, 47111.10, 52765.40, 59077.25, 66116.75, 74002.40, 82872.65, 92766.35, 103900.05, 116428.05,
         130389.45, 146050.00, 163550.00, 183200.00, 205200.00, 229850.00, 257450.00, 297200.00, 332900.00, 372867.25
     ];
-
     // 4. 게임 상태 변수
     let level = 0;
     let sugar = 1000;
@@ -140,7 +141,6 @@ document.addEventListener("DOMContentLoaded", function() {
     ];
     let currentUser = null;
 
-
     // 5. 이벤트 리스너
     strengthenButton.addEventListener('click', strengthenCookie);
     storeButton.addEventListener('click', storeCookie);
@@ -167,6 +167,11 @@ document.addEventListener("DOMContentLoaded", function() {
     gachaPull10.addEventListener('click', () => doGachaPull(10));
     battleExitButton.addEventListener('click', exitBattle);
     
+    // [신규] 확률표 모달 리스너
+    gachaProbButton.addEventListener('click', openProbModal);
+    closeProbModal.addEventListener('click', closeProbModal);
+    probModalOverlay.addEventListener('click', closeProbModal);
+
     // Firebase 관련 리스너 (null 체크 추가)
     if (auth) {
         googleLoginButton.addEventListener('click', signInWithGoogle);
@@ -190,7 +195,7 @@ document.addEventListener("DOMContentLoaded", function() {
         googleLoginButton.disabled = true;
     }
 
-
+    // (이하 함수들은 이전과 동일)
     // 6. Firebase 인증 함수
     function signInWithGoogle() {
         if (auth && GoogleAuthProvider) {
@@ -199,11 +204,8 @@ document.addEventListener("DOMContentLoaded", function() {
             });
         }
     }
-
     function signOut() {
-        if (auth) {
-            auth.signOut();
-        }
+        if (auth) { auth.signOut(); }
     }
     
     // 7. 핵심 강화 함수
@@ -247,34 +249,27 @@ document.addEventListener("DOMContentLoaded", function() {
         protectionToggleCheckbox.checked = false;
         updateDisplay();
     }
-
     async function storeCookie() {
         if (level === 0) return; 
-
         const newCookie = {
             level: level,
             name: getCookieName(level),
             sugarPerTime: getSugarPerTime(level)
         };
         inventory.push(newCookie);
-        
         if (currentUser) {
             await updateUserRanking(currentUser, level);
         }
-
         level = 0;
         currentCookieProtectionUses = 0;
         updateDisplay();
     }
-
     async function updateUserRanking(user, newLevel) {
         if (!user || !db) return;
-        
         const userRef = db.collection('rankings').doc(user.uid);
         try {
             const userDoc = await userRef.get();
             const currentBest = userDoc.exists ? userDoc.data().highestLevel : 0;
-            
             if (newLevel > currentBest) {
                 await userRef.set({
                     displayName: user.displayName,
@@ -286,38 +281,34 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error("랭킹 업데이트 실패:", e);
         }
     }
-
     function startBattle() {
         if (equippedBattleCookie) {
             battleWeaponNameEl.textContent = equippedBattleCookie;
             mainGameUI.style.display = 'none';
-            closeSidebar();
+            closeSidebar(); // 전투 시작 시 사이드바 닫기
             battleUI.style.display = 'flex';
         } else {
             alert("전투에 입장하려면 먼저 '뽑기'에서 쿠키를 뽑아 '무기'로 장착해야 합니다.");
         }
     }
-
     function exitBattle() {
         battleUI.style.display = 'none';
         mainGameUI.style.display = 'flex';
         updateDisplay();
     }
 
-    // 8. 사이드바/중앙패널 함수 (직접 스타일 제어)
+    // 8. 사이드바/중앙패널 함수
     function openSidebar(tabName) {
         mainSidebar.style.transform = 'translateX(0)';
         sidebarOverlay.style.opacity = '1';
         sidebarOverlay.style.visibility = 'visible';
         switchTab(tabName);
     }
-
     function closeSidebar() {
         mainSidebar.style.transform = 'translateX(100%)';
         sidebarOverlay.style.opacity = '0';
         sidebarOverlay.style.visibility = 'hidden';
     }
-
     async function switchTab(tabName) {
         inventoryTabContent.style.display = 'none';
         shopTabContent.style.display = 'none';
@@ -344,7 +335,6 @@ document.addEventListener("DOMContentLoaded", function() {
             tradeTabButton.classList.add('active');
         }
     }
-    
     async function loadRanking() {
         if (!db) {
             rankingListEl.innerHTML = '<li>Firebase DB가 로드되지 않았습니다.</li>';
@@ -356,13 +346,11 @@ document.addEventListener("DOMContentLoaded", function() {
                         .orderBy('highestLevel', 'desc')
                         .limit(20);
             const querySnapshot = await q.get();
-            
             rankingListEl.innerHTML = ''; 
             if (querySnapshot.empty) {
                 rankingListEl.innerHTML = '<li>아직 랭킹이 없습니다.</li>';
                 return;
             }
-
             let rank = 1;
             querySnapshot.forEach(doc => {
                 const data = doc.data();
@@ -376,7 +364,6 @@ document.addEventListener("DOMContentLoaded", function() {
             rankingListEl.innerHTML = '<li>랭킹을 불러오는 데 실패했습니다.</li>';
         }
     }
-
     function switchCentralPanel(mode) {
         strengthenPanel.style.display = 'none';
         gachaPanel.style.display = 'none';
@@ -407,7 +394,6 @@ document.addEventListener("DOMContentLoaded", function() {
             `;
             equippedSlotsEl.appendChild(itemEl);
         });
-
         // 2. 강화 쿠키 보관함
         inventoryListEl.innerHTML = ''; 
         if (inventory.length === 0) {
@@ -425,7 +411,6 @@ document.addEventListener("DOMContentLoaded", function() {
             `;
             inventoryListEl.appendChild(itemEl);
         });
-        
         // 3. 전투 쿠키 보관함
         battleCookieListEl.innerHTML = '';
         const battleCookies = Object.keys(battleCookieInventory);
@@ -442,7 +427,6 @@ document.addEventListener("DOMContentLoaded", function() {
             battleCookieListEl.appendChild(itemEl);
         });
     }
-
     function handleInventoryClick(event) {
         if (event.target.classList.contains('equip-button')) {
             if (equipped.length >= MAX_EQUIPPED) {
@@ -470,7 +454,6 @@ document.addEventListener("DOMContentLoaded", function() {
             closeSidebar(); 
         }
     }
-
     function handleEquippedClick(event) {
         if (event.target.classList.contains('unequip-button')) {
             const index = parseInt(event.target.dataset.index);
@@ -481,7 +464,6 @@ document.addEventListener("DOMContentLoaded", function() {
             updateEquippedList(); 
         }
     }
-
     function handleBattleCookieListClick(event) {
         if (event.target.classList.contains('equip-battle-cookie-button')) {
             const cookieName = event.target.dataset.name;
@@ -491,7 +473,6 @@ document.addEventListener("DOMContentLoaded", function() {
             closeSidebar();
         }
     }
-
     function updateEquippedList() {
         equippedCookieListEl.innerHTML = '';
         for (let i = 0; i < MAX_EQUIPPED; i++) {
@@ -505,7 +486,6 @@ document.addEventListener("DOMContentLoaded", function() {
             equippedCookieListEl.appendChild(li);
         }
     }
-
     function buyProtectionTicket() {
         const price = 100000;
         if (sugar >= price) {
@@ -517,7 +497,6 @@ document.addEventListener("DOMContentLoaded", function() {
             alert("설탕이 부족합니다.");
         }
     }
-
     function buyWarpTicket() {
         const price = 10000;
         if (level >= 10) {
@@ -583,6 +562,36 @@ document.addEventListener("DOMContentLoaded", function() {
         updateDisplay();
         updateInventoryDisplay();
     }
+    
+    // [신규] 확률표 모달 함수
+    function openProbModal() {
+        probTableBody.innerHTML = ''; // 테이블 비우기
+        let cumulativeOdds = 0;
+        const total = 10000000;
+
+        // gachaTable은 확률이 낮은 것부터 정렬되어 있다고 가정
+        // 확률을 재계산 (누적이 아님)
+        let lastOdds = 0;
+        for (const item of gachaTable) {
+            const currentItemOdds = item.odds - lastOdds;
+            const percentage = (currentItemOdds / total) * 100;
+            
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="grade-${item.grade}">${item.name}</td>
+                <td class="grade-${item.grade}">${item.grade}</td>
+                <td>${currentItemOdds.toLocaleString()} / ${total.toLocaleString()}</td>
+                <td>${percentage.toFixed(8)}%</td>
+            `;
+            probTableBody.appendChild(tr);
+            lastOdds = item.odds;
+        }
+        gachaProbModal.style.display = 'block';
+    }
+    function closeProbModal() {
+        gachaProbModal.style.display = 'none';
+    }
+
 
     // 11. 자동 설탕 획득
     function updateSugarPerTime() {
