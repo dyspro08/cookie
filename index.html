@@ -3,40 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>쿠키 강화하기 (확률표)</title>
-    <link rel="stylesheet" href="style.css">
+    <title>쿠키 강화하기 (Firebase)</title>
+    <link rel="stylesheet" href="style.css">ㅁ
 
-    <!-- (Firebase SDK는 이전과 동일) -->
-    <script type="module">
+    <!-- [신규] Firebase SDK (CDN 방식) -->
+    <!-- Firestore 및 Auth 모듈을 로드합니다. -->
+    <script type"module">
+        // Firebase config (제공해주신 정보)
         const firebaseConfig = {
           apiKey: "AIzaSyCKe3Nss6sUK5STIuU5En_CZpDLKD4LQjg",
           authDomain: "cookie-bg.firebaseapp.com",
           projectId: "cookie-bg",
-          storageBucket: "cookie-bg.appspot.com",
+          storageBucket: "cookie-bg.appspot.com", // .firebasestorage.app -> .appspot.com (일반적)
           messagingSenderId: "873733835679",
           appId: "1:873733835679:web:7cfac4d15415a612ac0baa",
           measurementId: "G-G05W6Z6QXP"
         };
+        
+        // Firebase 앱을 초기화하고 전역(window) 객체에 할당하여 script.js에서 쓸 수 있게 합니다.
         try {
             window.firebaseApp = firebase.initializeApp(firebaseConfig);
             window.firebaseAuth = firebase.auth();
             window.firebaseDb = firebase.firestore();
             window.GoogleAuthProvider = new firebase.auth.GoogleAuthProvider();
+            // console.log("Firebase initialized successfully");
         } catch (e) {
             console.error("Error initializing Firebase: ", e);
         }
     </script>
+
+    <!-- [주의] script.js 보다 먼저 로드되어야 합니다. -->
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-analytics.js"></script>
+
 </head>
 <body>
 
     <div id="sidebar-overlay"></div>
 
     <div id="main-game-ui">
-        <!-- 1. 왼쪽 패널 (이전과 동일) -->
+        <!-- 1. 왼쪽 패널 (정보) -->
         <div id="left-panel">
             <h2>🍪 장착중인 쿠키</h2>
             <ol id="equipped-cookie-list">
@@ -44,11 +52,14 @@
             </ol>
             <h2>⚔️ 장착 무기</h2>
             <div id="equipped-weapon-display">(없음)</div>
+            
             <div id="player-stats">
                 <p>CPS: <span id="sugar-per-time">0.000</span></p>
                 <p>설탕: <span id="sugar-count">1000</span></p>
                 <p>방지권: <span id="protection-ticket-count">0</span></p>
             </div>
+            
+            <!-- [신규] 로그인 UI -->
             <div id="auth-section">
                 <div id="user-info">
                     <p><span id="user-name"></span>님 환영합니다!</p>
@@ -58,7 +69,7 @@
             </div>
         </div>
         
-        <!-- 2. 중앙 패널 (이전과 동일) -->
+        <!-- 2. 중앙 패널 (강화/뽑기 탭) -->
         <div id="center-panel">
             <div id="cookie-mode-buttons">
                 <button id="strengthen-mode-button" class="mode-button">일반강화</button>
@@ -66,7 +77,7 @@
                 <button id="gacha-mode-button" class="mode-button">뽑기</button>
             </div>
 
-            <!-- 2-1. 일반강화 패널 (이전과 동일) -->
+            <!-- 2-1. 일반강화 패널 -->
             <div id="strengthen-panel">
                 <div id="cookie-main-display">
                     <div id="cookie-visual"><img src="https://placehold.co/300x300/D2B48C/8B4513?text=COOKIE" alt="쿠키 이미지"></div>
@@ -85,12 +96,9 @@
                 </div>
             </div>
 
-            <!-- 2-2. 뽑기 패널 (확률표 버튼 추가) -->
+            <!-- 2-2. 뽑기 패널 -->
             <div id="gacha-panel">
-                <div class="gacha-title-bar">
-                    <h2>⚔️ 전투 쿠키 뽑기</h2>
-                    <button id="gacha-prob-button">확률표</button> <!-- 신규 버튼 -->
-                </div>
+                <h2>⚔️ 전투 쿠키 뽑기</h2>
                 <p>쿠키를 뽑아 전투에 활용하세요! (뽑기 비용: <span id="gacha-cost">1,000</span> 설탕)</p>
                 <div id="gacha-buttons">
                     <button id="gacha-pull-1" class="gacha-button">1회 뽑기</button>
@@ -100,7 +108,7 @@
             </div>
         </div> 
 
-        <!-- 3. 오른쪽 패널 (이전과 동일) -->
+        <!-- 3. 오른쪽 패널 (메뉴) -->
         <div id="right-panel">
             <button id="inventory-toggle-button" class="menu-button">인벤</button>
             <button id="shop-toggle-button" class="menu-button">상점</button>
@@ -110,40 +118,60 @@
         </div>
     </div> <!-- #main-game-ui 끝 -->
 
-    <!-- 사이드바 (이전과 동일) -->
+    <!-- 사이드바 (랭킹 탭 수정) -->
     <div id="main-sidebar">
-        <!-- (내용 동일) -->
-    </div>
-    
-    <!-- 전투 UI (이전과 동일) -->
-    <div id="battle-ui">
-        <!-- (내용 동일) -->
-    </div>
-
-    <!-- [신규] 뽑기 확률표 모달 -->
-    <div id="gacha-prob-modal">
-        <div id="prob-modal-overlay"></div>
-        <div id="prob-modal-content">
-            <span id="close-prob-modal">&times;</span>
-            <h2>전투 쿠키 확률표</h2>
-            <div id="prob-table-container">
-                <table id="prob-table">
-                    <thead>
-                        <tr>
-                            <th>이름</th>
-                            <th>등급</th>
-                            <th>확률 (1/N)</th>
-                            <th>확률 (%)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="prob-table-body">
-                        <!-- JS로 채워짐 -->
-                    </tbody>
-                </table>
+        <button id="close-sidebar-button">X</button>
+        <div id="sidebar-nav">
+            <button id="inventory-tab-button" class="tab-button">인벤토리</button>
+            <button id="shop-tab-button" class="tab-button">상점</button>
+            <button id="ranking-tab-button" class="tab-button">랭킹</button>
+            <button id="trade-tab-button" class="tab-button">거래</button>
+        </div>
+        <div id="sidebar-content-container">
+            <!-- 1. 인벤토리 탭 -->
+            <div id="inventory-tab-content" class="tab-content">
+                <h3>🍪 장착중인 쿠키 (<span id="equipped-count">0</span>/5)</h3>
+                <div id="equipped-slots" class="item-list"></div>
+                <h3>📦 강화 쿠키 (보관함)</h3>
+                <div id="inventory-list" class="item-list"></div>
+                <h3>⚔️ 전투 쿠키 (보관함)</h3>
+                <div id="battle-cookie-list" class="item-list"></div>
+            </div>
+            <!-- 2. 상점 탭 -->
+            <div id="shop-tab-content" class="tab-content">
+                <h3>🛒 상점</h3>
+                <div class="item-list">
+                    <div class="shop-item">
+                        <span>🛡️ 실패 방지권 (1회)</span>
+                        <button id="buy-protection-ticket" class="purchase-button">구매 (설탕 100,000)</button>
+                    </div>
+                    <div class="shop-item">
+                        <span>🚀 +10 워프권</span>
+                        <button id="buy-warp-ticket" class="purchase-button">구매 (설탕 10,000)</button>
+                    </div>
+                </div>
+            </div>
+            <!-- 3. 랭킹 탭 -->
+            <div id="ranking-tab-content" class="tab-content">
+                <h3>🏆 최고 레벨 랭킹 (Top 20)</h3>
+                <ol id="ranking-list"></ol>
+            </div>
+            <!-- 4. 거래 탭 -->
+            <div id="trade-tab-content" class="tab-content">
+                <h3>🤝 거래 (개발 중)</h3>
+                <p>Firebase 연동 예정입니다.</p>
             </div>
         </div>
     </div>
+    
+    <!-- 전투 UI -->
+    <div id="battle-ui">
+        <h1>전투 중...</h1>
+        <p><span id="battle-weapon-name"></span>(으)로 적을 상대하며 상자를 파밍합니다.</p>
+        <button id="battle-exit-button">돌아가기</button>
+    </div>
 
+    <!-- [수정] script.js는 모든 HTML이 로드된 후 마지막에 위치 -->
     <script src="script.js"></script> 
 </body>
 </html>
