@@ -1,4 +1,5 @@
-// [오류 수정] DOM이 완전히 로드된 후에만 스크립트 전체를 실행하도록 수정
+// [오류 수정]
+// DOM이 완전히 로드된 후에만 스크립트 전체를 실행하도록 수정
 document.addEventListener("DOMContentLoaded", function() {
 
     // Firebase 인스턴스를 window 객체에서 가져옵니다 (HTML에서 초기화됨)
@@ -6,7 +7,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const db = window.firebaseDb || null;
     const GoogleAuthProvider = window.GoogleAuthProvider || null;
 
-    // 1. DOM 요소 가져오기
+    // 1. DOM 요소 가져오기 (이전과 동일)
     const sugarCountEl = document.getElementById('sugar-count');
     const sugarPerTimeEl = document.getElementById('sugar-per-time');
     const cookieNameDisplayEl = document.getElementById('cookie-name-display');
@@ -62,14 +63,6 @@ document.addEventListener("DOMContentLoaded", function() {
     const logoutButton = document.getElementById('logout-button');
     const rankingListEl = document.getElementById('ranking-list');
 
-    // [신규] 확률표 모달 DOM
-    const gachaProbButton = document.getElementById('gacha-prob-button');
-    const gachaProbModal = document.getElementById('gacha-prob-modal');
-    const closeProbModal = document.getElementById('close-prob-modal');
-    const probModalOverlay = document.getElementById('prob-modal-overlay');
-    const probTableBody = document.getElementById('prob-table-body');
-
-    // (이하 2, 3, 4 변수 선언은 이전과 동일)
     // 2. 100개 쿠키 이름 배열
     const cookieNames = [
         "바삭한 쿠키", "달콤한 쿠키", "고소한 쿠키", "촉촉한 쿠키", "향기로운 쿠키",
@@ -93,6 +86,7 @@ document.addEventListener("DOMContentLoaded", function() {
         "궁극 쿠키", "무적 쿠키", "초궁극 쿠키", "신격 쿠키", "초신격 쿠키",
         "절대신 쿠키", "무한신 쿠키", "초월신 쿠키", "창세신 쿠키", "태초의 쿠키"
     ];
+
     // 3. 50배 쿠키 초당 설탕 획득량 배열
     const cookieSugarPerSecond = [
         5.00, 5.60, 6.25, 7.00, 7.85, 8.80, 9.85, 11.05, 12.35, 13.85,
@@ -106,6 +100,7 @@ document.addEventListener("DOMContentLoaded", function() {
         42103.60, 47111.10, 52765.40, 59077.25, 66116.75, 74002.40, 82872.65, 92766.35, 103900.05, 116428.05,
         130389.45, 146050.00, 163550.00, 183200.00, 205200.00, 229850.00, 257450.00, 297200.00, 332900.00, 372867.25
     ];
+
     // 4. 게임 상태 변수
     let level = 0;
     let sugar = 1000;
@@ -140,6 +135,8 @@ document.addEventListener("DOMContentLoaded", function() {
         { name: "흙 쿠키", odds: 10000000, grade: "common" },
     ];
     let currentUser = null;
+    let autoSaveTimer = null; // 자동 저장 타이머
+
 
     // 5. 이벤트 리스너
     strengthenButton.addEventListener('click', strengthenCookie);
@@ -167,26 +164,38 @@ document.addEventListener("DOMContentLoaded", function() {
     gachaPull10.addEventListener('click', () => doGachaPull(10));
     battleExitButton.addEventListener('click', exitBattle);
     
-    // [신규] 확률표 모달 리스너
-    gachaProbButton.addEventListener('click', openProbModal);
-    closeProbModal.addEventListener('click', closeProbModal);
-    probModalOverlay.addEventListener('click', closeProbModal);
-
     // Firebase 관련 리스너 (null 체크 추가)
     if (auth) {
         googleLoginButton.addEventListener('click', signInWithGoogle);
         logoutButton.addEventListener('click', signOut);
         
-        auth.onAuthStateChanged(user => {
+        auth.onAuthStateChanged(async (user) => {
             if (user) {
+                // 로그인 성공
                 currentUser = user;
                 userNameEl.textContent = user.displayName;
                 userInfoEl.style.display = 'block';
                 googleLoginButton.style.display = 'none';
+                
+                // [신규] 데이터 불러오기
+                await loadGameData(user.uid);
+                // 30초마다 자동 저장 시작
+                if (autoSaveTimer) clearInterval(autoSaveTimer);
+                autoSaveTimer = setInterval(() => saveGameData(user.uid), 30000); // 30초
+                
             } else {
+                // 로그아웃
+                if (currentUser) { // 로그아웃 직전에 마지막 저장
+                    await saveGameData(currentUser.uid);
+                }
+                if (autoSaveTimer) clearInterval(autoSaveTimer);
+                
                 currentUser = null;
                 userInfoEl.style.display = 'none';
                 googleLoginButton.style.display = 'block';
+                
+                // [신규] 게임 상태 초기화
+                resetGameData();
             }
         });
     } else {
@@ -195,7 +204,7 @@ document.addEventListener("DOMContentLoaded", function() {
         googleLoginButton.disabled = true;
     }
 
-    // (이하 함수들은 이전과 동일)
+
     // 6. Firebase 인증 함수
     function signInWithGoogle() {
         if (auth && GoogleAuthProvider) {
@@ -204,12 +213,17 @@ document.addEventListener("DOMContentLoaded", function() {
             });
         }
     }
-    function signOut() {
-        if (auth) { auth.signOut(); }
+
+    async function signOut() {
+        if (auth) {
+            await saveGameData(currentUser.uid); // 로그아웃 전 마지막 저장
+            auth.signOut();
+        }
     }
     
     // 7. 핵심 강화 함수
     function strengthenCookie() {
+        // ... (이전과 동일) ...
         const useProtection = protectionToggleCheckbox.checked;
         if (useProtection) {
             if (playerProtectionTickets <= 0) {
@@ -249,6 +263,7 @@ document.addEventListener("DOMContentLoaded", function() {
         protectionToggleCheckbox.checked = false;
         updateDisplay();
     }
+
     async function storeCookie() {
         if (level === 0) return; 
         const newCookie = {
@@ -263,7 +278,10 @@ document.addEventListener("DOMContentLoaded", function() {
         level = 0;
         currentCookieProtectionUses = 0;
         updateDisplay();
+        // [신규] 저장 시 즉시 DB에 저장
+        await saveGameData(currentUser?.uid);
     }
+
     async function updateUserRanking(user, newLevel) {
         if (!user || !db) return;
         const userRef = db.collection('rankings').doc(user.uid);
@@ -281,34 +299,38 @@ document.addEventListener("DOMContentLoaded", function() {
             console.error("랭킹 업데이트 실패:", e);
         }
     }
+
     function startBattle() {
         if (equippedBattleCookie) {
             battleWeaponNameEl.textContent = equippedBattleCookie;
             mainGameUI.style.display = 'none';
-            closeSidebar(); // 전투 시작 시 사이드바 닫기
+            closeSidebar();
             battleUI.style.display = 'flex';
         } else {
             alert("전투에 입장하려면 먼저 '뽑기'에서 쿠키를 뽑아 '무기'로 장착해야 합니다.");
         }
     }
+
     function exitBattle() {
         battleUI.style.display = 'none';
         mainGameUI.style.display = 'flex';
         updateDisplay();
     }
 
-    // 8. 사이드바/중앙패널 함수
+    // 8. 사이드바/중앙패널 함수 (직접 스타일 제어)
     function openSidebar(tabName) {
         mainSidebar.style.transform = 'translateX(0)';
         sidebarOverlay.style.opacity = '1';
         sidebarOverlay.style.visibility = 'visible';
         switchTab(tabName);
     }
+
     function closeSidebar() {
         mainSidebar.style.transform = 'translateX(100%)';
         sidebarOverlay.style.opacity = '0';
         sidebarOverlay.style.visibility = 'hidden';
     }
+
     async function switchTab(tabName) {
         inventoryTabContent.style.display = 'none';
         shopTabContent.style.display = 'none';
@@ -335,6 +357,7 @@ document.addEventListener("DOMContentLoaded", function() {
             tradeTabButton.classList.add('active');
         }
     }
+    
     async function loadRanking() {
         if (!db) {
             rankingListEl.innerHTML = '<li>Firebase DB가 로드되지 않았습니다.</li>';
@@ -364,6 +387,7 @@ document.addEventListener("DOMContentLoaded", function() {
             rankingListEl.innerHTML = '<li>랭킹을 불러오는 데 실패했습니다.</li>';
         }
     }
+
     function switchCentralPanel(mode) {
         strengthenPanel.style.display = 'none';
         gachaPanel.style.display = 'none';
@@ -382,7 +406,7 @@ document.addEventListener("DOMContentLoaded", function() {
 
     // 9. 인벤토리 UI 및 로직
     function updateInventoryDisplay() {
-        // 1. 장착 슬롯
+        // ... (이전과 동일) ...
         equippedSlotsEl.innerHTML = ''; 
         equippedCountEl.textContent = equipped.length;
         equipped.forEach((cookie, index) => {
@@ -394,7 +418,6 @@ document.addEventListener("DOMContentLoaded", function() {
             `;
             equippedSlotsEl.appendChild(itemEl);
         });
-        // 2. 강화 쿠키 보관함
         inventoryListEl.innerHTML = ''; 
         if (inventory.length === 0) {
             inventoryListEl.innerHTML = '<p style="text-align:center; color:#888;">보관함이 비었습니다.</p>';
@@ -411,7 +434,6 @@ document.addEventListener("DOMContentLoaded", function() {
             `;
             inventoryListEl.appendChild(itemEl);
         });
-        // 3. 전투 쿠키 보관함
         battleCookieListEl.innerHTML = '';
         const battleCookies = Object.keys(battleCookieInventory);
         if (battleCookies.length === 0) {
@@ -427,7 +449,7 @@ document.addEventListener("DOMContentLoaded", function() {
             battleCookieListEl.appendChild(itemEl);
         });
     }
-    function handleInventoryClick(event) {
+    async function handleInventoryClick(event) {
         if (event.target.classList.contains('equip-button')) {
             if (equipped.length >= MAX_EQUIPPED) {
                 alert("장착 슬롯이 꽉 찼습니다! (최대 5개)");
@@ -439,6 +461,7 @@ document.addEventListener("DOMContentLoaded", function() {
             updateInventoryDisplay();
             updateSugarPerTime();
             updateEquippedList(); 
+            await saveGameData(currentUser?.uid); // [저장]
         }
         else if (event.target.classList.contains('load-button')) {
             if (level !== 0) {
@@ -452,9 +475,10 @@ document.addEventListener("DOMContentLoaded", function() {
             updateDisplay(); 
             updateInventoryDisplay(); 
             closeSidebar(); 
+            await saveGameData(currentUser?.uid); // [저장]
         }
     }
-    function handleEquippedClick(event) {
+    async function handleEquippedClick(event) {
         if (event.target.classList.contains('unequip-button')) {
             const index = parseInt(event.target.dataset.index);
             const cookieToUnequip = equipped.splice(index, 1)[0]; 
@@ -462,15 +486,17 @@ document.addEventListener("DOMContentLoaded", function() {
             updateInventoryDisplay();
             updateSugarPerTime();
             updateEquippedList(); 
+            await saveGameData(currentUser?.uid); // [저장]
         }
     }
-    function handleBattleCookieListClick(event) {
+    async function handleBattleCookieListClick(event) {
         if (event.target.classList.contains('equip-battle-cookie-button')) {
             const cookieName = event.target.dataset.name;
             equippedBattleCookie = cookieName;
             updateDisplay();
             alert(`'${cookieName}'(을)를 무기로 장착했습니다.`);
             closeSidebar();
+            await saveGameData(currentUser?.uid); // [저장]
         }
     }
     function updateEquippedList() {
@@ -486,18 +512,19 @@ document.addEventListener("DOMContentLoaded", function() {
             equippedCookieListEl.appendChild(li);
         }
     }
-    function buyProtectionTicket() {
+    async function buyProtectionTicket() {
         const price = 100000;
         if (sugar >= price) {
             sugar -= price;
             playerProtectionTickets++;
             updateDisplay();
             alert("실패 방지권 1개를 구매했습니다.");
+            await saveGameData(currentUser?.uid); // [저장]
         } else {
             alert("설탕이 부족합니다.");
         }
     }
-    function buyWarpTicket() {
+    async function buyWarpTicket() {
         const price = 10000;
         if (level >= 10) {
             alert("이미 +10 이상입니다.");
@@ -513,13 +540,14 @@ document.addEventListener("DOMContentLoaded", function() {
             currentCookieProtectionUses = 0;
             updateDisplay();
             alert("+10 강화에 성공했습니다!");
+            await saveGameData(currentUser?.uid); // [저장]
         } else {
             alert("설탕이 부족합니다.");
         }
     }
 
     // 10. 뽑기 함수
-    function doGachaPull(pullCount) {
+    async function doGachaPull(pullCount) {
         const totalCost = gachaCost * pullCount;
         if (sugar < totalCost) {
             alert("설탕이 부족합니다.");
@@ -542,9 +570,7 @@ document.addEventListener("DOMContentLoaded", function() {
                     break;
                 }
             }
-            
             results.push({ name: drawnCookie, grade: drawnGrade });
-            
             if (battleCookieInventory[drawnCookie]) {
                 battleCookieInventory[drawnCookie]++;
             } else {
@@ -561,37 +587,8 @@ document.addEventListener("DOMContentLoaded", function() {
         
         updateDisplay();
         updateInventoryDisplay();
+        await saveGameData(currentUser?.uid); // [저장]
     }
-    
-    // [신규] 확률표 모달 함수
-    function openProbModal() {
-        probTableBody.innerHTML = ''; // 테이블 비우기
-        let cumulativeOdds = 0;
-        const total = 10000000;
-
-        // gachaTable은 확률이 낮은 것부터 정렬되어 있다고 가정
-        // 확률을 재계산 (누적이 아님)
-        let lastOdds = 0;
-        for (const item of gachaTable) {
-            const currentItemOdds = item.odds - lastOdds;
-            const percentage = (currentItemOdds / total) * 100;
-            
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td class="grade-${item.grade}">${item.name}</td>
-                <td class="grade-${item.grade}">${item.grade}</td>
-                <td>${currentItemOdds.toLocaleString()} / ${total.toLocaleString()}</td>
-                <td>${percentage.toFixed(8)}%</td>
-            `;
-            probTableBody.appendChild(tr);
-            lastOdds = item.odds;
-        }
-        gachaProbModal.style.display = 'block';
-    }
-    function closeProbModal() {
-        gachaProbModal.style.display = 'none';
-    }
-
 
     // 11. 자동 설탕 획득
     function updateSugarPerTime() {
@@ -676,6 +673,84 @@ document.addEventListener("DOMContentLoaded", function() {
         }
         return cookieSugarPerSecond[currentLevel - 1];
     }
+    
+    // [신규] 저장/불러오기 함수
+    async function saveGameData(userId) {
+        if (!userId || !db) return;
+        
+        const saveData = {
+            sugar: sugar,
+            level: level,
+            protectionTickets: playerProtectionTickets,
+            protectionUses: currentCookieProtectionUses,
+            equippedWeapon: equippedBattleCookie,
+            equippedCPSCookies: equipped,
+            strengthenInventory: inventory,
+            battleCookieInventory: battleCookieInventory
+        };
+        
+        try {
+            await db.collection('users').doc(userId).set({ gamedata: saveData });
+            // console.log("게임 데이터 저장 완료");
+        } catch (e) {
+            console.error("데이터 저장 실패:", e);
+        }
+    }
+
+    async function loadGameData(userId) {
+        if (!userId || !db) return;
+        
+        try {
+            const docRef = db.collection('users').doc(userId);
+            const docSnap = await docRef.get();
+            
+            if (docSnap.exists) {
+                const saveData = docSnap.data().gamedata;
+                
+                // 로컬 변수에 불러온 데이터 적용
+                sugar = saveData.sugar || 1000;
+                level = saveData.level || 0;
+                playerProtectionTickets = saveData.protectionTickets || 0;
+                currentCookieProtectionUses = saveData.protectionUses || 0;
+                equippedBattleCookie = saveData.equippedWeapon || null;
+                equipped = saveData.equippedCPSCookies || [];
+                inventory = saveData.strengthenInventory || [];
+                battleCookieInventory = saveData.battleCookieInventory || {};
+                
+                // console.log("게임 데이터 불러오기 완료");
+            } else {
+                // console.log("저장된 데이터 없음, 새 게임 시작");
+                // 새 유저일 경우, 현재 기본값으로 한 번 저장
+                await saveGameData(userId);
+            }
+            
+            // 데이터 로드 후 전체 UI 갱신
+            updateDisplay();
+            updateEquippedList();
+            updateSugarPerTime();
+            
+        } catch (e) {
+            console.error("데이터 불러오기 실패:", e);
+        }
+    }
+    
+    // [신규] 로그아웃 시 데이터 초기화 함수
+    function resetGameData() {
+        level = 0;
+        sugar = 1000;
+        inventory = [];
+        equipped = [];
+        playerProtectionTickets = 0;
+        currentCookieProtectionUses = 0;
+        equippedBattleCookie = null;
+        battleCookieInventory = {};
+        
+        // UI 갱신
+        updateDisplay();
+        updateEquippedList();
+        updateSugarPerTime();
+    }
+
 
     // 13. 초기 실행
     updateDisplay();
